@@ -103,7 +103,14 @@ plot(vari,model=m_vari, col=1,pl=F,pch=16)
 
 ``` r
 
-# implmentar: como guardar o gráfico na pasta semivariogramas
+
+png(paste0("semivariogramas/",my_string,"-",my_year,".png"),         # File name
+       width = 1900, height = 1000)
+    plot(vari,model=m_vari, col=1,pl=F,pch=16,
+         cex=3)
+dev.off() 
+#> png 
+#>   2
 ```
 
 ## Krigagem
@@ -116,7 +123,7 @@ ko_var <- krige(formula=form, df, grid, model=m_vari,
     debug.level=-1,  
     )
 #> [using ordinary kriging]
-#>   2% done  8% done 13% done 20% done 26% done 32% done 38% done 45% done 51% done 58% done 64% done 70% done 77% done 83% done 89% done 94% done100% done
+#>   0% done  2% done  5% done  7% done  8% done  9% done 10% done 12% done 15% done 19% done 22% done 24% done 27% done 30% done 32% done 35% done 38% done 43% done 46% done 50% done 54% done 58% done 61% done 65% done 70% done 76% done 78% done 82% done 87% done 93% done 99% done100% done
 ```
 
 ``` r

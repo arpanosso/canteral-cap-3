@@ -82,7 +82,12 @@ m_vari <- fit.variogram(vari,
                         vgm(7,"Sph",5e5,0))
 plot(vari,model=m_vari, col=1,pl=F,pch=16)
 
-# implmentar: como guardar o gráfico na pasta semivariogramas
+
+png(paste0("semivariogramas/",my_string,"-",my_year,".png"),         # File name
+       width = 1900, height = 1000)
+    plot(vari,model=m_vari, col=1,pl=F,pch=16,
+         cex=3)
+dev.off() 
 ```
 
 
