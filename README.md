@@ -42,7 +42,7 @@ head(arco_desmatamento)
 ``` r
 df_grid <- arco_desmatamento %>% 
   group_by(x,y) %>% 
-  summarise(xco2 = mean(xco2,na.rm = TRUE))
+  summarise(z = mean(xco2,na.rm = TRUE))
 
 x<-df_grid$x
 y<-df_grid$y
@@ -54,11 +54,20 @@ sp::gridded(grid) = ~ x + y
 ## filtrar o banco de dados
 
 ``` r
-df <- arco_desmatamento %>% 
-  filter(ano == 2016) %>% 
-  group_by(x,y) %>% 
-  summarise(z = mean(xco2,na.rm = TRUE)) %>% 
-  drop_na()
+my_string <- "xco2"
+my_year <- 2016
+df <- my_df_generator(arco_desmatamento, my_year, my_string)
+head(df)
+#> # A tibble: 6 × 3
+#> # Groups:   x [6]
+#>         x       y     z
+#>     <dbl>   <dbl> <dbl>
+#> 1 2895911 9110346  405.
+#> 2 2922219 9140533  404.
+#> 3 2923441 9111555  403.
+#> 4 2924704 9082580  403.
+#> 5 2926007 9053609  402.
+#> 6 2927351 9024641  401.
 ```
 
 ## passando para o objeto
@@ -71,8 +80,8 @@ form <- z ~ 1
 ## Verificando o Variograma experimental
 
 ``` r
-cutoff_p <- 20e5
-width_p <- 20
+cutoff_p <- 19e5
+width_p <- 7
 vari <- variogram(form, 
                   width = cutoff_p/width_p,
                   cutoff = cutoff_p ,
@@ -92,6 +101,11 @@ plot(vari,model=m_vari, col=1,pl=F,pch=16)
 
 ![](README_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
 
+``` r
+
+# implmentar: como guardar o gráfico na pasta semivariogramas
+```
+
 ## Krigagem
 
 ``` r
@@ -102,7 +116,7 @@ ko_var <- krige(formula=form, df, grid, model=m_vari,
     debug.level=-1,  
     )
 #> [using ordinary kriging]
-#>   0% done  5% done 11% done 14% done 17% done 20% done 25% done 28% done 32% done 37% done 42% done 48% done 53% done 59% done 63% done 68% done 75% done 82% done 88% done 94% done100% done
+#>   2% done  8% done 13% done 20% done 26% done 32% done 38% done 45% done 51% done 58% done 64% done 70% done 77% done 83% done 89% done 94% done100% done
 ```
 
 ``` r
@@ -125,21 +139,27 @@ points(pol_arco[,1],pol_arco[,2],col="red")
 ![](README_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
 ``` r
-plot(pol_arco)
-```
-
-![](README_files/figure-gfm/unnamed-chunk-12-2.png)<!-- -->
-
-``` r
 ko_var_df <- as.tibble(ko_var) %>% 
   mutate(flag = def_pol(x,y,pol_arco))
+# como gravar ko_var_df de forma que tenhamos x, y e o nome da variável que está em "my_string)
 
+obj_exp <- ko_var_df[1:3]
+names(obj_exp) <- c("x","y",my_string)
+
+writexl::write_xlsx(obj_exp, paste0("mapas/",my_string,
+                               "-",my_year,".xlsx"))
+```
+
+``` r
 ko_var_df %>% 
   filter(flag) %>% 
     ggplot(aes(x=x,y=y)) +
     geom_tile(aes(fill = var1.pred)) +
     scale_fill_viridis_c() +
-    coord_equal() +labs(x="",y="")
+    coord_equal() +labs(x="",y="") +
+  theme_bw() +
+  labs(fill=my_string,title = my_year) + 
+  map_theme()
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
