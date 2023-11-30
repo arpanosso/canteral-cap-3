@@ -54,7 +54,7 @@ sp::gridded(grid) = ~ x + y
 ## filtrar o banco de dados
 ```{r}
 my_string <- "xco2"
-my_year <- 2016
+my_year <- 2020
 df <- my_df_generator(arco_desmatamento, my_year, my_string)
 head(df)
 ```
@@ -67,8 +67,8 @@ form <- z ~ 1
 ## Verificando o Variograma experimental
 
 ```{r}
-cutoff_p <- 19e5
-width_p <- 7
+cutoff_p <- 5e5
+width_p <- 20
 vari <- variogram(form, 
                   width = cutoff_p/width_p,
                   cutoff = cutoff_p ,
@@ -79,15 +79,19 @@ vari %>%
 ```
 ```{r}
 m_vari <- fit.variogram(vari,
-                        vgm(7,"Sph",5e5,0))
+                        vgm(2.5,"Sph",16.5e5,3))
 plot(vari,model=m_vari, col=1,pl=F,pch=16)
 
 
-png(paste0("semivariogramas/",my_string,"-",my_year,".png"),         # File name
-       width = 1900, height = 1000)
-    plot(vari,model=m_vari, col=1,pl=F,pch=16,
-         cex=3)
-dev.off() 
+# jpeg(paste0("semivariogramas/",my_string,"-",my_year,".jpeg"),         # File name
+#        width=8, height = 8, units=c("cm"), res = 300)
+#     plot(vari, model=m_vari, col=1,pl=F,pch=16,
+#          cex.axis=0.5,cex.lab = 0.5, cex=0.75,
+#          main = "f) 2020 -"~Xco[2]~(ppm),
+#          xlab="Distância de separação (m)", ylab="Semivariância")
+#     
+# 
+# dev.off() 
 ```
 
 
@@ -124,20 +128,66 @@ ko_var_df <- as.tibble(ko_var) %>%
 obj_exp <- ko_var_df[1:3]
 names(obj_exp) <- c("x","y",my_string)
 
-writexl::write_xlsx(obj_exp, paste0("mapas/",my_string,
-                               "-",my_year,".xlsx"))
+# writexl::write_xlsx(obj_exp, paste0("mapas/",my_string,
+#                                "-",my_year,".xlsx"))
 ```
 
 
 ```{r}
-ko_var_df %>% 
-  filter(flag) %>% 
-    ggplot(aes(x=x,y=y)) +
-    geom_tile(aes(fill = var1.pred)) +
-    scale_fill_viridis_c() +
-    coord_equal() +labs(x="",y="") +
-  theme_bw() +
-  labs(fill=my_string,title = my_year) + 
-  map_theme()
+# jpeg(paste0("mapas/",my_string,"-",my_year,".jpeg"),         # File name
+#        width=25, height = 15, units=c("cm"), res = 300)
+# 
+# ko_var_df %>% 
+#   filter(flag) %>% 
+#     ggplot(aes(x=x,y=y)) +
+#     geom_tile(aes(fill = var1.pred)) +
+#     scale_fill_gradient(low = "#FFD92F", high = "#238B45") +
+#     coord_equal() +labs(x="",y="") +
+#   theme(
+#     plot.title = element_text(size = 20),
+#     axis.text.x = element_text(size = 15),
+#     axis.text.y = element_text(size = 15),
+#     legend.text = element_text(size = 12),
+#     legend.title = element_text(size = 15)) +
+#   labs(fill="LAI", title = paste0("f) ", my_year)) + 
+#   map_theme()
+# 
+# #scale_fill_gradient(low = "#984EA3", high = "#FFD92F") - SIF
+# #scale_fill_gradient(low = "yellow", high = "#543005")  - LST_Amp
+# #scale_fill_gradient(low = "#FFD92F", high = "#238B45") - LAI
+# dev.off()
 ```
+
+## Manipulação do banco de dados
+
+### Listando aquivos xlsx
+
+```{r}
+files <- list.files("mapas/", 
+                    pattern = "xlsx",
+                    full.names = TRUE)
+```
+
+
+```{r}
+my_xlsx_reader <- function(my_way){
+  df <- readxl::read_xlsx(my_way)
+  my_string <- str_split(my_way,pattern = "[/.-]",simplify = TRUE)
+  
+  df <- df %>% 
+    mutate(variable = my_string[1,2],
+           year = my_string[1,3])
+  names(df) <- c("x","y","z","variable","year")
+  df
+}
+df_final <- purrr::map_df(files,my_xlsx_reader)
+df_final$variable %>% unique()
+df_final$year %>% unique()
+
+df_final %>% 
+  pivot_wider(names_from = variable, values_from = z)
+```
+
+
+
 
