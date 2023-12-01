@@ -125,7 +125,7 @@ ko_var <- krige(formula=form, df, grid, model=m_vari,
     debug.level=-1,  
     )
 #> [using ordinary kriging]
-#>   3% done 17% done 31% done 46% done 60% done 74% done 88% done100% done
+#>   0% done  4% done 10% done 15% done 28% done 36% done 41% done 50% done 56% done 59% done 63% done 68% done 72% done 77% done 86% done 94% done 99% done100% done
 ```
 
 ``` r
@@ -210,21 +210,44 @@ df_final$variable %>% unique()
 #> [1] "lai"     "lst_amp" "ndvi"    "sif"     "xco2"
 df_final$year %>% unique()
 #> [1] "2015" "2016" "2017" "2018" "2019" "2020"
-
-df_final %>% 
-  pivot_wider(names_from = variable, values_from = z)
-#> # A tibble: 62,514 × 8
-#>          x       y year    lai lst_amp  ndvi   sif  xco2
-#>      <dbl>   <dbl> <chr> <dbl>   <dbl> <dbl> <dbl> <dbl>
-#>  1 2895911 8521695 2015   3.52    7.43 0.626 0.785  402.
-#>  2 2915911 8521695 2015   3.52    7.47 0.628 0.785  402.
-#>  3 2935911 8521695 2015   3.52    7.52 0.629 0.785  402.
-#>  4 2955911 8521695 2015   3.52    7.57 0.631 0.785  402.
-#>  5 2975911 8521695 2015   3.52    7.62 0.633 0.785  402.
-#>  6 2995911 8521695 2015   3.52    7.66 0.636 0.785  402.
-#>  7 3015911 8521695 2015   3.52    7.71 0.639 0.785  402.
-#>  8 3035911 8521695 2015   3.52    7.75 0.642 0.785  402.
-#>  9 3055911 8521695 2015   3.52    7.78 0.646 0.785  402.
-#> 10 3075911 8521695 2015   3.52    7.80 0.649 0.785  402.
-#> # ℹ 62,504 more rows
 ```
+
+## Calculando a Anomalia
+
+``` r
+df_final <- df_final %>% 
+  pivot_wider(names_from = variable, values_from = z) %>% 
+  group_by(year) %>% 
+  mutate(
+    anomaly_xco2 = xco2 - mean(xco2,na.rm = TRUE)
+  ) %>% 
+  mutate(flag = def_pol(x,y,pol_arco))
+```
+
+# Mapas de anomalia para xco2
+
+``` r
+for(i in 2015:2020){
+  ano <- i
+  # jpeg(paste0("anomalias/xco2-",ano,".jpeg"),
+  #      width=25, height = 15, units=c("cm"), res = 300)
+  plot_anom <- df_final %>%
+    filter(year == ano, flag) %>%
+    ggplot(aes(x=x,y=y)) +
+    geom_tile(aes(fill = anomaly_xco2)) +
+    scale_fill_gradient(low = "#FFD92F", high = "#238B45") +
+    coord_equal() +labs(x="",y="") +
+    theme(
+      plot.title = element_text(size = 20),
+      axis.text.x = element_text(size = 15),
+      axis.text.y = element_text(size = 15),
+      legend.text = element_text(size = 12),
+      legend.title = element_text(size = 15)) +
+    labs(fill="Xco2 Anomaly", title = ano) +
+    map_theme()
+  print(plot_anom)
+  # dev.off()
+}
+```
+
+![](README_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->![](README_files/figure-gfm/unnamed-chunk-18-2.png)<!-- -->![](README_files/figure-gfm/unnamed-chunk-18-3.png)<!-- -->![](README_files/figure-gfm/unnamed-chunk-18-4.png)<!-- -->![](README_files/figure-gfm/unnamed-chunk-18-5.png)<!-- -->![](README_files/figure-gfm/unnamed-chunk-18-6.png)<!-- -->
