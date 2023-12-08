@@ -30,3 +30,14 @@ map_theme <- function(){
       width =  ggplot2::unit(1.5,"cm"))
   )
 }
+
+my_xlsx_reader <- function(my_way){
+  df <- readxl::read_xlsx(my_way)
+  my_string <- str_split(my_way,pattern = "[/.-]",simplify = TRUE)
+
+  df <- df %>%
+    mutate(variable = my_string[1,2],
+           year = my_string[1,3])
+  names(df) <- c("x","y","z","variable","year")
+  df
+}

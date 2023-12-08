@@ -19,7 +19,13 @@ knitr::opts_chunk$set(
 ## Carregando o pacote
 ```{r}
 library(tidyverse)
+library(tidymodels)
 library(gstat)
+library(sp)
+library(openxlsx)
+library(readxl)
+library(raster)
+library(rstudioapi)
 library(sp)
 source("R/my-functions.R")
 ```
@@ -67,8 +73,8 @@ form <- z ~ 1
 ## Verificando o Variograma experimental
 
 ```{r}
-cutoff_p <- 5e5
-width_p <- 20
+cutoff_p <- 6e6
+width_p <- 15
 vari <- variogram(form, 
                   width = cutoff_p/width_p,
                   cutoff = cutoff_p ,
@@ -79,7 +85,7 @@ vari %>%
 ```
 ```{r}
 m_vari <- fit.variogram(vari,
-                        vgm(2.5,"Sph",16.5e5,3))
+                        vgm(3.5,"Sph",30e5,3))
 plot(vari,model=m_vari, col=1,pl=F,pch=16)
 
 
@@ -93,7 +99,6 @@ plot(vari,model=m_vari, col=1,pl=F,pch=16)
 # 
 # dev.off() 
 ```
-
 
 ## Krigagem
 ```{r}
@@ -137,11 +142,11 @@ names(obj_exp) <- c("x","y",my_string)
 # jpeg(paste0("mapas/",my_string,"-",my_year,".jpeg"),         # File name
 #        width=25, height = 15, units=c("cm"), res = 300)
 # 
-# ko_var_df %>% 
-#   filter(flag) %>% 
+# ko_var_df %>%
+#   filter(flag) %>%
 #     ggplot(aes(x=x,y=y)) +
 #     geom_tile(aes(fill = var1.pred)) +
-#     scale_fill_gradient(low = "#FFD92F", high = "#238B45") +
+#     scale_fill_viridis_c() +
 #     coord_equal() +labs(x="",y="") +
 #   theme(
 #     plot.title = element_text(size = 20),
@@ -149,7 +154,7 @@ names(obj_exp) <- c("x","y",my_string)
 #     axis.text.y = element_text(size = 15),
 #     legend.text = element_text(size = 12),
 #     legend.title = element_text(size = 15)) +
-#   labs(fill="LAI", title = paste0("f) ", my_year)) + 
+#   labs(fill=expression(Xco[2]), title = paste0("f) ", my_year)) +
 #   map_theme()
 # 
 # #scale_fill_gradient(low = "#984EA3", high = "#FFD92F") - SIF
@@ -171,16 +176,6 @@ files <- list.files("mapas/",
 
 
 ```{r}
-my_xlsx_reader <- function(my_way){
-  df <- readxl::read_xlsx(my_way)
-  my_string <- str_split(my_way,pattern = "[/.-]",simplify = TRUE)
-  
-  df <- df %>% 
-    mutate(variable = my_string[1,2],
-           year = my_string[1,3])
-  names(df) <- c("x","y","z","variable","year")
-  df
-}
 df_final <- purrr::map_df(files,my_xlsx_reader)
 df_final$variable %>% unique()
 df_final$year %>% unique()
@@ -192,23 +187,43 @@ df_final <- df_final %>%
   pivot_wider(names_from = variable, values_from = z) %>% 
   group_by(year) %>% 
   mutate(
-    anomaly_xco2 = xco2 - mean(xco2,na.rm = TRUE)
+    anomaly_xco2 = xco2 - median(xco2,na.rm = TRUE)
   ) %>% 
   mutate(flag = def_pol(x,y,pol_arco))
 ```
 
 
+## Exportando a base de dados após krigagem e anomalia
+```{r}
+# write_rds(df_final, file = "data/base_krigagem.rds")
+```
+
+
 # Mapas de anomalia para xco2
 ```{r}
-for(i in 2015:2020){
-  ano <- i
+# Criar uma função para a paleta de cores invertida
+paleta_invertida <- function(n) {
+  cores <- rainbow(n = n)
+  cores_invertidas <- rev(cores)  # Inverte a ordem das cores
+  return(cores_invertidas)
+}
+
+# Usar a função para obter a paleta de cores invertida
+cores_invertidas <- paleta_invertida(5)  # Substitua 10 pelo número desejado de cores
+
+anos <- 2015:2020
+letras <- letters[1:length(anos)]
+
+for(i in 1:length(anos)){
+  ano <- anos[i]
+  letra <- letras[i]
   # jpeg(paste0("anomalias/xco2-",ano,".jpeg"),
-  #      width=25, height = 15, units=c("cm"), res = 300)
+  #      width=25, height = 12, units=c("cm"), res = 300)
   plot_anom <- df_final %>%
     filter(year == ano, flag) %>%
     ggplot(aes(x=x,y=y)) +
     geom_tile(aes(fill = anomaly_xco2)) +
-    scale_fill_gradient(low = "#FFD92F", high = "#238B45") +
+    scale_fill_gradientn(colours = cores_invertidas) +
     coord_equal() +labs(x="",y="") +
     theme(
       plot.title = element_text(size = 20),
@@ -216,11 +231,110 @@ for(i in 2015:2020){
       axis.text.y = element_text(size = 15),
       legend.text = element_text(size = 12),
       legend.title = element_text(size = 15)) +
-    labs(fill="Xco2 Anomaly", title = ano) +
+    labs(fill=expression(Anomalia~Xco[2]), title = paste0(letra,") ", ano)) +
     map_theme()
   print(plot_anom)
-  # dev.off()
+  dev.off()
 }
 ```
 
+## Aprendizado de Máquina
+
+### Definindo o plano de multisession
+```{r}
+future::plan("multisession")
+```
+
+### Lendo a base
+
+```{r}
+data_set <- read_rds("data/base_krigagem.rds") %>% 
+  mutate(year = as.numeric(year))
+```
+
+
+### Inspesionar a base quanto a valores faltantes
+```{r}
+visdat::vis_miss(data_set)
+glimpse(data_set)
+```
+
+### Definindo a Base de treino e teste
+```{r}
+data_set_ml <- data_set
+xco2_initial_split <- initial_split(data_set_ml, prop = 0.75)
+xco2_train <- training(xco2_initial_split)
+```
+
+
+### Data prep
+
+```{r}
+xco2_recipe <- recipe(xco2 ~ ., 
+                      data = xco2_train %>% 
+                        ungroup() %>% 
+                        filter(year == 2015) %>% 
+                        dplyr::select(lai:xco2) %>% 
+                        sample_n(7795*0.01)
+                        
+) %>%  
+  step_normalize(all_numeric_predictors())  %>% 
+  step_novel(all_nominal_predictors()) %>% 
+  step_zv(all_predictors()) #%>%
+  #step_naomit(c(Ts, Us)) %>% 
+  # step_impute_median(where(is.numeric)) %>% # inputação da mediana nos numéricos
+  # step_poly(c(Us,Ts), degree = 2)  %>%  
+  #step_dummy(all_nominal_predictors())
+bake(prep(xco2_recipe), new_data = NULL)
+```
+```{r}
+visdat::vis_miss(bake(prep(xco2_recipe), new_data = NULL))
+```
+
+
+### Definição da reamostragem
+```{r}
+xco2_resamples <- vfold_cv(xco2_train, v = 5)
+```
+
+
+### Definição do modelo
+
+```{r}
+xco2_rf_model <- rand_forest(
+  min_n = tune(),
+  mtry = tune(),
+  trees = tune()
+)   %>%  
+  set_mode("regression")  %>% 
+  set_engine("randomForest")
+```
+
+### Workflow
+
+```{r}
+xco2_rf_wf <- workflow()   %>%  
+  add_model(xco2_rf_model) %>%  
+  add_recipe(xco2_recipe)
+```
+
+### Tune
+
+```{r}
+grid_rf <- expand.grid(
+  min_n = c(20,21),
+  mtry = c(5,10),
+  trees = c(300) #<-----------------------
+)
+```
+
+```{r}
+# xco2_rf_tune_grid <- tune_grid(
+#  xco2_rf_wf,
+#   resamples = xco2_resamples,
+#   grid = grid_rf,
+#   metrics = metric_set(rmse)
+# ) 
+# autoplot(xco2_rf_tune_grid)
+```
 
