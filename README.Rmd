@@ -323,18 +323,78 @@ xco2_rf_wf <- workflow()   %>%
 ```{r}
 grid_rf <- expand.grid(
   min_n = c(20,21),
-  mtry = c(5,10),
-  trees = c(300) #<-----------------------
+  mtry = c(2,4),
+  trees = c(10) #<-----------------------
 )
 ```
 
 ```{r}
-# xco2_rf_tune_grid <- tune_grid(
-#  xco2_rf_wf,
-#   resamples = xco2_resamples,
-#   grid = grid_rf,
-#   metrics = metric_set(rmse)
-# ) 
-# autoplot(xco2_rf_tune_grid)
+xco2_rf_tune_grid <- tune_grid(
+ xco2_rf_wf,
+  resamples = xco2_resamples,
+  grid = grid_rf,
+  metrics = metric_set(rmse)
+)
+autoplot(xco2_rf_tune_grid)
+```
+
+```{r}
+collect_metrics(xco2_rf_tune_grid)
+```
+
+```{r}
+xco2_rf_tune_grid %>%   show_best(metric = "rmse", n = 6)
+```
+
+```{r}
+xco2_rf_best_params <- select_best(xco2_rf_tune_grid, "rmse")
+xco2_rf_wf <- xco2_rf_wf %>% finalize_workflow(xco2_rf_best_params)
+xco2_rf_last_fit <- last_fit(xco2_rf_wf, xco2_initial_split)
+```
+
+```{r}
+xco2_test_preds <- bind_rows(
+  collect_predictions(xco2_rf_last_fit)  %>%   mutate(modelo = "rf")
+)
+
+xco2_test <- testing(xco2_initial_split)
+visdat::vis_miss(xco2_test)
+```
+
+```{r}
+xco2_test_preds %>% 
+  ggplot(aes(x=.pred, y=xco2)) +
+  geom_point()+
+  theme_bw() +
+  geom_smooth(method = "lm") +
+  ggpubr::stat_regline_equation(ggplot2::aes(
+  label =  paste(..eq.label.., ..rr.label.., sep = "*plain(\",\")~~"))) +
+  geom_abline (slope=1, linetype = "dashed", color="Red")
+```
+```{r}
+xco2_rf_last_fit_model <-xco2_rf_last_fit$.workflow[[1]]$fit$fit
+vip::vip(xco2_rf_last_fit_model,
+    aesthetics = list(color = "black", fill = "orange")) +
+    theme(axis.text.y=element_text(size=rel(1.5)),
+          axis.text.x=element_text(size=rel(1.5)),
+          axis.title.x=element_text(size=rel(1.5))
+          )
+```
+
+```{r}
+da <- xco2_test_preds %>% 
+  filter(xco2 > 0, .pred>0 )
+
+my_r <- cor(da$xco2,da$.pred)
+my_r2 <- my_r*my_r
+my_mse <- Metrics::mse(da$xco2,da$.pred)
+my_rmse <- Metrics::rmse(da$xco2,
+                         da$.pred)
+my_mae <- Metrics::mae(da$xco2,da$.pred)
+my_mape <- Metrics::mape(da$xco2,da$.pred)*100
+
+
+vector_of_metrics <- c(r=my_r, R2=my_r2, MSE=my_mse, RMSE=my_rmse, MAE=my_mae, MAPE=my_mape)
+print(data.frame(vector_of_metrics))
 ```
 

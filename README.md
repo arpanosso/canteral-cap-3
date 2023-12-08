@@ -131,7 +131,7 @@ ko_var <- krige(formula=form, df, grid, model=m_vari,
     debug.level=-1,  
     )
 #> [using ordinary kriging]
-#>   9% done 21% done 30% done 43% done 57% done 70% done 83% done 96% done100% done
+#>  12% done 39% done 65% done 91% done100% done
 ```
 
 ``` r
@@ -334,18 +334,18 @@ xco2_recipe <- recipe(xco2 ~ .,
   #step_dummy(all_nominal_predictors())
 bake(prep(xco2_recipe), new_data = NULL)
 #> # A tibble: 77 × 5
-#>        lai  lst_amp     ndvi     sif  xco2
-#>      <dbl>    <dbl>    <dbl>   <dbl> <dbl>
-#>  1 -0.0348  0.229    0.0687   0.0261  402.
-#>  2 -1.21   -1.51    -1.98     0.0292  402.
-#>  3  0.0645 -1.48    -0.00571  0.0261  402.
-#>  4 -2.23   -0.438   -1.41    -0.136   401.
-#>  5  1.48   -0.0388   1.02    -0.651   402.
-#>  6 -2.03    0.869   -1.07     2.00    401.
-#>  7 -0.0780 -0.113   -0.600    0.0261  402.
-#>  8 -0.0348 -0.00685 -1.32     0.0261  402.
-#>  9  1.41   -0.0912   1.47     0.773   402.
-#> 10 -0.0348  0.358    0.328    0.0261  402.
+#>        lai lst_amp    ndvi     sif  xco2
+#>      <dbl>   <dbl>   <dbl>   <dbl> <dbl>
+#>  1  1.51   -0.807   0.912   0.132   402.
+#>  2  2.68   -0.794   2.45    1.42    402.
+#>  3  0.473  -0.459  -0.104  -0.0142  402.
+#>  4 -0.538  -0.0869 -0.645  -2.94    401.
+#>  5  0.0110  1.18   -0.485  -0.0142  402.
+#>  6 -0.371  -0.652  -1.84    0.704   402.
+#>  7 -3.31    1.24   -1.48   -0.434   401.
+#>  8 -0.936   1.71    0.146  -0.991   401.
+#>  9  0.526   0.821   0.820  -1.50    402.
+#> 10  0.0110  0.187  -0.0320 -0.0142  402.
 #> # ℹ 67 more rows
 ```
 
@@ -386,17 +386,107 @@ xco2_rf_wf <- workflow()   %>%
 ``` r
 grid_rf <- expand.grid(
   min_n = c(20,21),
-  mtry = c(5,10),
-  trees = c(300) #<-----------------------
+  mtry = c(2,4),
+  trees = c(10) #<-----------------------
 )
 ```
 
 ``` r
-# xco2_rf_tune_grid <- tune_grid(
-#  xco2_rf_wf,
-#   resamples = xco2_resamples,
-#   grid = grid_rf,
-#   metrics = metric_set(rmse)
-# ) 
-# autoplot(xco2_rf_tune_grid)
+xco2_rf_tune_grid <- tune_grid(
+ xco2_rf_wf,
+  resamples = xco2_resamples,
+  grid = grid_rf,
+  metrics = metric_set(rmse)
+)
+autoplot(xco2_rf_tune_grid)
+```
+
+![](README_files/figure-gfm/unnamed-chunk-30-1.png)<!-- -->
+
+``` r
+collect_metrics(xco2_rf_tune_grid)
+#> # A tibble: 4 × 9
+#>    mtry trees min_n .metric .estimator  mean     n std_err .config             
+#>   <dbl> <dbl> <dbl> <chr>   <chr>      <dbl> <int>   <dbl> <chr>               
+#> 1     2    10    20 rmse    standard   0.567     5 0.00346 Preprocessor1_Model1
+#> 2     2    10    21 rmse    standard   0.572     5 0.00352 Preprocessor1_Model2
+#> 3     4    10    20 rmse    standard   0.571     5 0.00342 Preprocessor1_Model3
+#> 4     4    10    21 rmse    standard   0.571     5 0.00277 Preprocessor1_Model4
+```
+
+``` r
+xco2_rf_tune_grid %>%   show_best(metric = "rmse", n = 6)
+#> # A tibble: 4 × 9
+#>    mtry trees min_n .metric .estimator  mean     n std_err .config             
+#>   <dbl> <dbl> <dbl> <chr>   <chr>      <dbl> <int>   <dbl> <chr>               
+#> 1     2    10    20 rmse    standard   0.567     5 0.00346 Preprocessor1_Model1
+#> 2     4    10    20 rmse    standard   0.571     5 0.00342 Preprocessor1_Model3
+#> 3     4    10    21 rmse    standard   0.571     5 0.00277 Preprocessor1_Model4
+#> 4     2    10    21 rmse    standard   0.572     5 0.00352 Preprocessor1_Model2
+```
+
+``` r
+xco2_rf_best_params <- select_best(xco2_rf_tune_grid, "rmse")
+xco2_rf_wf <- xco2_rf_wf %>% finalize_workflow(xco2_rf_best_params)
+xco2_rf_last_fit <- last_fit(xco2_rf_wf, xco2_initial_split)
+```
+
+``` r
+xco2_test_preds <- bind_rows(
+  collect_predictions(xco2_rf_last_fit)  %>%   mutate(modelo = "rf")
+)
+
+xco2_test <- testing(xco2_initial_split)
+visdat::vis_miss(xco2_test)
+```
+
+![](README_files/figure-gfm/unnamed-chunk-34-1.png)<!-- -->
+
+``` r
+xco2_test_preds %>% 
+  ggplot(aes(x=.pred, y=xco2)) +
+  geom_point()+
+  theme_bw() +
+  geom_smooth(method = "lm") +
+  ggpubr::stat_regline_equation(ggplot2::aes(
+  label =  paste(..eq.label.., ..rr.label.., sep = "*plain(\",\")~~"))) +
+  geom_abline (slope=1, linetype = "dashed", color="Red")
+```
+
+![](README_files/figure-gfm/unnamed-chunk-35-1.png)<!-- -->
+
+``` r
+xco2_rf_last_fit_model <-xco2_rf_last_fit$.workflow[[1]]$fit$fit
+vip::vip(xco2_rf_last_fit_model,
+    aesthetics = list(color = "black", fill = "orange")) +
+    theme(axis.text.y=element_text(size=rel(1.5)),
+          axis.text.x=element_text(size=rel(1.5)),
+          axis.title.x=element_text(size=rel(1.5))
+          )
+```
+
+![](README_files/figure-gfm/unnamed-chunk-36-1.png)<!-- -->
+
+``` r
+da <- xco2_test_preds %>% 
+  filter(xco2 > 0, .pred>0 )
+
+my_r <- cor(da$xco2,da$.pred)
+my_r2 <- my_r*my_r
+my_mse <- Metrics::mse(da$xco2,da$.pred)
+my_rmse <- Metrics::rmse(da$xco2,
+                         da$.pred)
+my_mae <- Metrics::mae(da$xco2,da$.pred)
+my_mape <- Metrics::mape(da$xco2,da$.pred)*100
+
+
+vector_of_metrics <- c(r=my_r, R2=my_r2, MSE=my_mse, RMSE=my_rmse, MAE=my_mae, MAPE=my_mape)
+print(data.frame(vector_of_metrics))
+#>      vector_of_metrics
+#> r            0.6912584
+#> R2           0.4778382
+#> MSE          0.3061251
+#> RMSE         0.5532857
+#> MAE          0.2903066
+#> MAPE         0.0721221
 ```
