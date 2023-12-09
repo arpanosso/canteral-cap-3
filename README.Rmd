@@ -274,7 +274,7 @@ xco2_recipe <- recipe(xco2 ~ .,
                       data = xco2_train %>% 
                         ungroup() %>% 
                         filter(year == 2015) %>% 
-                        dplyr::select(lai:xco2) %>% 
+                        dplyr::select(lai:xco2) %>%
                         sample_n(7795*0.60)
                         
 ) %>%  

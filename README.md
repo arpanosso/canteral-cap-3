@@ -131,7 +131,7 @@ ko_var <- krige(formula=form, df, grid, model=m_vari,
     debug.level=-1,  
     )
 #> [using ordinary kriging]
-#>  17% done 45% done 67% done 91% done100% done
+#>   9% done 35% done 61% done 80% done 99% done100% done
 ```
 
 ``` r
@@ -321,8 +321,8 @@ xco2_recipe <- recipe(xco2 ~ .,
                       data = xco2_train %>% 
                         ungroup() %>% 
                         filter(year == 2015) %>% 
-                        dplyr::select(lai:xco2) %>% 
-                        sample_n(7795*0.80)
+                        dplyr::select(lai:xco2) # %>% 
+                        # sample_n(7795*0.60)
                         
 ) %>%  
   step_normalize(all_numeric_predictors())  %>% 
@@ -333,20 +333,20 @@ xco2_recipe <- recipe(xco2 ~ .,
   # step_poly(c(Us,Ts), degree = 2)  %>%  
   #step_dummy(all_nominal_predictors())
 bake(prep(xco2_recipe), new_data = NULL)
-#> # A tibble: 6,236 × 5
-#>        lai lst_amp    ndvi      sif  xco2
-#>      <dbl>   <dbl>   <dbl>    <dbl> <dbl>
-#>  1  1.97   -0.986   1.51   -0.0849   402.
-#>  2  0.455   0.611   1.84   -0.754    402.
-#>  3 -0.787  -0.735  -0.534  -2.22     402.
-#>  4  0.912  -0.968   1.04    0.0847   402.
-#>  5  2.18   -0.643   1.73   -0.241    402.
-#>  6 -1.17    1.06   -0.548   0.206    400.
-#>  7 -0.0147  0.223   0.0248  0.00646  402.
-#>  8 -0.0147 -1.29    0.667   0.00646  402.
-#>  9 -0.0147 -0.0311  0.147   0.00646  402.
-#> 10 -0.0147 -0.349   0.0150  0.00646  402.
-#> # ℹ 6,226 more rows
+#> # A tibble: 7,822 × 5
+#>        lai lst_amp   ndvi      sif  xco2
+#>      <dbl>   <dbl>  <dbl>    <dbl> <dbl>
+#>  1 -0.0229   1.75  -0.634  0.00770  402.
+#>  2  1.21     0.984  1.30  -3.97     401.
+#>  3  0.120    1.03  -0.421 -0.260    402.
+#>  4  0.295   -0.573  0.194  0.00770  402.
+#>  5 -3.01     1.47  -0.568  1.53     401.
+#>  6 -0.0229  -1.15  -1.17   0.00770  402.
+#>  7 -0.450    2.10   0.749 -1.90     402.
+#>  8 -0.0229  -1.20   0.977  0.00770  402.
+#>  9  0.832    1.84   0.569  0.328    402.
+#> 10  0.778   -0.869  0.843 -1.07     402.
+#> # ℹ 7,812 more rows
 ```
 
 ``` r
@@ -408,24 +408,24 @@ collect_metrics(xco2_rf_tune_grid)
 #> # A tibble: 18 × 9
 #>     mtry trees min_n .metric .estimator  mean     n std_err .config             
 #>    <dbl> <dbl> <dbl> <chr>   <chr>      <dbl> <int>   <dbl> <chr>               
-#>  1     2    50    20 rmse    standard   0.553     5 0.00308 Preprocessor1_Model…
-#>  2     2    50    50 rmse    standard   0.562     5 0.00297 Preprocessor1_Model…
-#>  3     2    50   100 rmse    standard   0.573     5 0.00341 Preprocessor1_Model…
-#>  4     4    50    20 rmse    standard   0.554     5 0.00348 Preprocessor1_Model…
-#>  5     4    50    50 rmse    standard   0.563     5 0.00338 Preprocessor1_Model…
-#>  6     4    50   100 rmse    standard   0.574     5 0.00379 Preprocessor1_Model…
-#>  7     2   100    20 rmse    standard   0.550     5 0.00346 Preprocessor1_Model…
-#>  8     2   100    50 rmse    standard   0.560     5 0.00342 Preprocessor1_Model…
-#>  9     2   100   100 rmse    standard   0.572     5 0.00338 Preprocessor1_Model…
-#> 10     4   100    20 rmse    standard   0.551     5 0.00408 Preprocessor1_Model…
-#> 11     4   100    50 rmse    standard   0.562     5 0.00375 Preprocessor1_Model…
-#> 12     4   100   100 rmse    standard   0.573     5 0.00370 Preprocessor1_Model…
-#> 13     2   200    20 rmse    standard   0.549     5 0.00332 Preprocessor1_Model…
-#> 14     2   200    50 rmse    standard   0.560     5 0.00342 Preprocessor1_Model…
-#> 15     2   200   100 rmse    standard   0.572     5 0.00336 Preprocessor1_Model…
-#> 16     4   200    20 rmse    standard   0.551     5 0.00400 Preprocessor1_Model…
-#> 17     4   200    50 rmse    standard   0.561     5 0.00360 Preprocessor1_Model…
-#> 18     4   200   100 rmse    standard   0.572     5 0.00361 Preprocessor1_Model…
+#>  1     2    50    20 rmse    standard   0.549     5 0.00702 Preprocessor1_Model…
+#>  2     2    50    50 rmse    standard   0.560     5 0.00763 Preprocessor1_Model…
+#>  3     2    50   100 rmse    standard   0.571     5 0.00714 Preprocessor1_Model…
+#>  4     4    50    20 rmse    standard   0.551     5 0.00647 Preprocessor1_Model…
+#>  5     4    50    50 rmse    standard   0.561     5 0.00696 Preprocessor1_Model…
+#>  6     4    50   100 rmse    standard   0.571     5 0.00728 Preprocessor1_Model…
+#>  7     2   100    20 rmse    standard   0.547     5 0.00691 Preprocessor1_Model…
+#>  8     2   100    50 rmse    standard   0.558     5 0.00693 Preprocessor1_Model…
+#>  9     2   100   100 rmse    standard   0.570     5 0.00725 Preprocessor1_Model…
+#> 10     4   100    20 rmse    standard   0.549     5 0.00698 Preprocessor1_Model…
+#> 11     4   100    50 rmse    standard   0.560     5 0.00700 Preprocessor1_Model…
+#> 12     4   100   100 rmse    standard   0.571     5 0.00720 Preprocessor1_Model…
+#> 13     2   200    20 rmse    standard   0.546     5 0.00721 Preprocessor1_Model…
+#> 14     2   200    50 rmse    standard   0.558     5 0.00702 Preprocessor1_Model…
+#> 15     2   200   100 rmse    standard   0.570     5 0.00737 Preprocessor1_Model…
+#> 16     4   200    20 rmse    standard   0.548     5 0.00676 Preprocessor1_Model…
+#> 17     4   200    50 rmse    standard   0.559     5 0.00681 Preprocessor1_Model…
+#> 18     4   200   100 rmse    standard   0.570     5 0.00728 Preprocessor1_Model…
 ```
 
 ``` r
@@ -433,12 +433,12 @@ xco2_rf_tune_grid %>%   show_best(metric = "rmse", n = 6)
 #> # A tibble: 6 × 9
 #>    mtry trees min_n .metric .estimator  mean     n std_err .config              
 #>   <dbl> <dbl> <dbl> <chr>   <chr>      <dbl> <int>   <dbl> <chr>                
-#> 1     2   200    20 rmse    standard   0.549     5 0.00332 Preprocessor1_Model13
-#> 2     2   100    20 rmse    standard   0.550     5 0.00346 Preprocessor1_Model07
-#> 3     4   200    20 rmse    standard   0.551     5 0.00400 Preprocessor1_Model16
-#> 4     4   100    20 rmse    standard   0.551     5 0.00408 Preprocessor1_Model10
-#> 5     2    50    20 rmse    standard   0.553     5 0.00308 Preprocessor1_Model01
-#> 6     4    50    20 rmse    standard   0.554     5 0.00348 Preprocessor1_Model04
+#> 1     2   200    20 rmse    standard   0.546     5 0.00721 Preprocessor1_Model13
+#> 2     2   100    20 rmse    standard   0.547     5 0.00691 Preprocessor1_Model07
+#> 3     4   200    20 rmse    standard   0.548     5 0.00676 Preprocessor1_Model16
+#> 4     2    50    20 rmse    standard   0.549     5 0.00702 Preprocessor1_Model01
+#> 5     4   100    20 rmse    standard   0.549     5 0.00698 Preprocessor1_Model10
+#> 6     4    50    20 rmse    standard   0.551     5 0.00647 Preprocessor1_Model04
 ```
 
 ``` r
@@ -499,10 +499,10 @@ my_mape <- Metrics::mape(da$xco2,da$.pred)*100
 vector_of_metrics <- c(r=my_r, R2=my_r2, MSE=my_mse, RMSE=my_rmse, MAE=my_mae, MAPE=my_mape)
 print(data.frame(vector_of_metrics))
 #>      vector_of_metrics
-#> r            0.7131543
-#> R2           0.5085890
-#> MSE          0.2899824
-#> RMSE         0.5385001
-#> MAE          0.2801987
-#> MAPE         0.0696029
+#> r           0.70060654
+#> R2          0.49084952
+#> MSE         0.29940905
+#> RMSE        0.54718283
+#> MAE         0.28044649
+#> MAPE        0.06967561
 ```
