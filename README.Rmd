@@ -275,7 +275,7 @@ xco2_recipe <- recipe(xco2 ~ .,
                         ungroup() %>% 
                         filter(year == 2015) %>% 
                         dplyr::select(lai:xco2) %>% 
-                        sample_n(7795*0.01)
+                        sample_n(7795*0.40)
                         
 ) %>%  
   step_normalize(all_numeric_predictors())  %>% 
@@ -287,6 +287,8 @@ xco2_recipe <- recipe(xco2 ~ .,
   #step_dummy(all_nominal_predictors())
 bake(prep(xco2_recipe), new_data = NULL)
 ```
+
+
 ```{r}
 visdat::vis_miss(bake(prep(xco2_recipe), new_data = NULL))
 ```
@@ -322,9 +324,9 @@ xco2_rf_wf <- workflow()   %>%
 
 ```{r}
 grid_rf <- expand.grid(
-  min_n = c(20,21),
+  min_n = c(20,50,100),
   mtry = c(2,4),
-  trees = c(10) #<-----------------------
+  trees = c(50) #<-----------------------
 )
 ```
 
